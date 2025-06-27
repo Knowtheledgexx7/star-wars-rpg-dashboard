@@ -1,0 +1,15 @@
+{
+  "user": "house_universal",
+  "canvas": "Corp_Tiers",
+  "data": {
+    "current_rank": "Syndicate Broker",
+    "board_seat": false,
+    "next_milestone": "Acquire 5% stake in InterGalFed",
+    "rivals": [
+      "Luthan Hross",
+      "Kesso Majar"
+    ]
+  },
+  "id": "0693be75-ea46-48c6-bbc8-b38fb8444a96",
+  "timestamp": "2025-06-10T23:24:13.477663Z"
+}

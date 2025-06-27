@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Canvas Log View</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron&display=swap" rel="stylesheet">
+  <style>
+    body {
+      background-color: #000;
+      color: #ffd700;
+      font-family: 'Orbitron', sans-serif;
+      margin: 0;
+      padding: 2rem;
+    }
+
+    h1 {
+      text-align: center;
+      color: #ffcc00;
+      border-bottom: 2px solid #ffcc00;
+      padding-bottom: 0.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .entry {
+      border: 1px solid #ffcc00;
+      border-radius: 6px;
+      background-color: #111;
+      margin-bottom: 1rem;
+    }
+
+    .entry-header {
+      padding: 1rem;
+      cursor: pointer;
+      background-color: #222;
+    }
+
+    .entry-header:hover {
+      background-color: #333;
+    }
+
+    .entry-title {
+      margin: 0;
+      font-size: 1rem;
+      font-weight: bold;
+    }
+
+    .entry-body {
+      display: none;
+      padding: 1rem;
+      border-top: 1px solid #444;
+    }
+
+    .entry p, .entry ul {
+      margin: 0.5rem 0;
+      color: #ccc;
+    }
+
+    .label {
+      font-weight: bold;
+      color: #fff;
+    }
+
+    .system-note {
+      font-style: italic;
+      color: #888;
+    }
+
+    .force-light { color: #6cf; }
+    .force-dark { color: #d00; }
+    .force-gray { color: #aaa; }
+
+    .divider {
+      height: 2px;
+      background-color: #ffcc00;
+      margin: 1rem 0;
+    }
+
+    a.back-link {
+      display: block;
+      text-align: center;
+      margin-top: 2rem;
+      color: #ffd700;
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <h1>📓 {{ canvas }} — Journal Log</h1>
+
+  {% for entry in log %}
+    <div class="entry">
+      <div class="entry-header" onclick="toggleEntry(this)">
+        <p class="entry-title">
+          📝 {{ entry.user }} @ {{ entry.meta.timestamp or "Unknown Time" }} — 
+          {% if entry.data and entry.data.alignment %}
+            <span class="force-{{ entry.data.alignment | lower }}">{{ entry.data.alignment }}</span>
+          {% else %}
+            N/A
+          {% endif %}
+        </p>
+      </div>
+      <div class="entry-body">
+        {% if entry.data %}
+          <p><span class="label">Force Score:</span> {{ entry.data.force_score or "?" }}</p>
+          <p><span class="label">Force State:</span> {{ entry.data.force_state or "?" }}</p>
+          <p><span class="label">Species:</span> {{ entry.data.species or "?" }}</p>
+          <p><span class="label">Homeworld:</span> {{ entry.data.homeworld or "?" }}</p>
+
+          {% if entry.data.tags %}
+            <p><span class="label">Tags:</span> {{ entry.data.tags | join(", ") }}</p>
+          {% else %}
+            <p><span class="label">Tags:</span> None</p>
+          {% endif %}
+
+          {% if entry.data.traits %}
+            <p><span class="label">Destiny:</span> {{ entry.data.traits.destiny or "?" }}</p>
+            <p><span class="label">Burden:</span> {{ entry.data.traits.burden or "?" }}</p>
+            <p><span class="label">Vision Triggers:</span> {{ entry.data.traits.vision_triggers | join(", ") }}</p>
+          {% endif %}
+
+          {% if entry.data.force_powers %}
+            <h4>Force Powers:</h4>
+            <ul>
+              {% for school, powers in entry.data.force_powers.items() %}
+                <li><strong>{{ school }}:</strong> {{ powers | join(", ") }}</li>
+              {% endfor %}
+            </ul>
+          {% endif %}
+
+          {% if entry.data.npc_reactions %}
+            <h4>NPC Reactions:</h4>
+            <ul>
+              {% for faction, reaction in entry.data.npc_reactions.items() %}
+                <li><strong>{{ faction }}:</strong> {{ reaction }}</li>
+              {% endfor %}
+            </ul>
+          {% endif %}
+
+          {% if entry.data.last_force_event %}
+            <h4>Last Force Event:</h4>
+            <p><strong>Location:</strong> {{ entry.data.last_force_event.location or "?" }}</p>
+            <p><strong>Event:</strong> {{ entry.data.last_force_event.event or "?" }}</p>
+            <p><strong>Outcome:</strong> {{ entry.data.last_force_event.outcome or "?" }}</p>
+          {% endif %}
+        {% else %}
+          <p class="system-note">⚠️ No HUD data recorded.</p>
+        {% endif %}
+
+        <div class="divider"></div>
+
+        {% if entry.meta %}
+          <p><span class="label">Source:</span> {{ entry.meta.source or "Unknown" }} |
+             <span class="label">Campaign:</span> {{ entry.meta.campaign or "Unnamed Campaign" }}</p>
+          {% if entry.meta.system_flags %}
+            <p>
+              <span class="label">Flags:</span> 
+              AutoSave={{ entry.meta.system_flags.auto_save }},
+              Sandbox={{ entry.meta.system_flags.sandbox_mode }},
+              GM Override={{ entry.meta.system_flags.gm_override }}
+            </p>
+          {% else %}
+            <p class="system-note">⚠️ No system flags provided.</p>
+          {% endif %}
+        {% else %}
+          <p class="system-note">⛔ No metadata available.</p>
+        {% endif %}
+      </div>
+    </div>
+  {% endfor %}
+
+  <a href="/" class="back-link">← Back to Dashboard</a>
+
+  <script>
+    function toggleEntry(header) {
+      const body = header.nextElementSibling;
+      body.style.display = body.style.display === 'block' ? 'none' : 'block';
+    }
+  </script>
+</body>
+</html>

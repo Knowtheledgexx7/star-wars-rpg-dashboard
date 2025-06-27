@@ -1,0 +1,10 @@
+{
+  "user": "house_universal",
+  "canvas": "Force_HUD",
+  "data": {
+    "alignment": "Gray",
+    "force_score": 58,
+    "active_powers": ["Force Push", "Mind Trick"],
+    "moral_trajectory": ["used Force on a civilian", "resisted dark influence"]
+  }
+}
