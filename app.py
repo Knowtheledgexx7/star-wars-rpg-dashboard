@@ -1,24 +1,25 @@
-from flask import Flask, request, jsonify, render_template, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, abort
 from flask_cors import CORS
 from datetime import datetime
 from uuid import uuid4
 import os
 import json
 
-app = Flask(__name__)
-CORS(app)
+app = Flask(__name__, static_folder="static")
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 # In-memory storage
 latest_canvas = {}
 log_history = []
 
 # File paths
-log_file = "hud_log.jsonl"
-char_file = "characters.jsonl"
+LOG_FILE = "hud_log.jsonl"
+STATIC_FOLDER = "static"
+WELL_KNOWN_FOLDER = os.path.join(STATIC_FOLDER, ".well-known")
 
 # Load history on startup
-if os.path.exists(log_file):
-    with open(log_file, "r") as f:
+if os.path.exists(LOG_FILE):
+    with open(LOG_FILE, "r") as f:
         for line in f:
             try:
                 log_history.append(json.loads(line.strip()))
@@ -29,8 +30,12 @@ if os.path.exists(log_file):
 @app.route("/save_canvas", methods=["POST"])
 def save_canvas():
     auth_header = request.headers.get("Authorization", "")
-    if auth_header != "Bearer Abracadabra":
-        return jsonify({"status": "unauthorized"}), 401
+    if not auth_header.startswith("Bearer "):
+        return jsonify({"status": "unauthorized", "message": "Missing or invalid Bearer token."}), 401
+
+    token = auth_header.replace("Bearer ", "")
+    if token != "Abracadabra":
+        return jsonify({"status": "unauthorized", "message": "Invalid token."}), 401
 
     try:
         data = request.get_json(force=True)
@@ -44,14 +49,15 @@ def save_canvas():
         data.setdefault("meta", {})
         data["meta"].setdefault(
             "alignment",
-            data.get("data", {}).get("alignment", "Unknown"))
+            data.get("data", {}).get("alignment", "Unknown")
+        )
         data["meta"].setdefault("entries", 1)
 
         latest_canvas.clear()
         latest_canvas.update(data)
         log_history.append(data)
 
-        with open(log_file, "a") as f:
+        with open(LOG_FILE, "a") as f:
             f.write(json.dumps(data) + "\n")
 
         return jsonify({
@@ -108,26 +114,38 @@ def get_canvas_history():
     canvas = request.args.get("canvas")
 
     history = [
-        e for e in log_history if (not user or e.get("user") == user) and (
-            not campaign or e.get("campaign") == campaign) and (
-                not canvas or e.get("canvas") == canvas)
+        e for e in log_history
+        if (not user or e.get("user") == user) and
+           (not campaign or e.get("campaign") == campaign) and
+           (not canvas or e.get("canvas") == canvas)
     ]
     history.sort(key=lambda x: x["timestamp"], reverse=True)
     return jsonify({"status": "success", "history": history}), 200
 
 
-# ✅ Serve Plugin Files (.well-known)
+# ✅ Serve .well-known Plugin Files
 @app.route('/.well-known/<path:filename>')
 def serve_well_known(filename):
-    return send_from_directory('static/.well-known', filename)
+    full_path = os.path.join(WELL_KNOWN_FOLDER, filename)
+    if not os.path.exists(full_path):
+        abort(404)
+    return send_from_directory(WELL_KNOWN_FOLDER, filename)
 
 
-# Optional landing route (can be removed for React-only use)
+# ✅ Serve openapi.yaml
+@app.route('/static/<path:filename>')
+def serve_static(filename):
+    full_path = os.path.join(STATIC_FOLDER, filename)
+    if not os.path.exists(full_path):
+        abort(404)
+    return send_from_directory(STATIC_FOLDER, filename)
+
+
 @app.route("/")
 def home():
-    return "RPG HUD API is live."
+    return "🧭 Star Wars RPG HUD API is live."
 
 
-# Dev entrypoint
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8080)
+
