@@ -182,7 +182,7 @@ def query_nemotron():
         nvidia_response = requests.post(
             "https://integrate.api.nvidia.com/v1/chat/completions",
             headers={
-                "Authorization": f"Bearer {NVIDIA_API_KEY}",
+                "Authorization": f"Bearer {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}",
                 "Content-Type": "application/json"
             },
             json=payload
