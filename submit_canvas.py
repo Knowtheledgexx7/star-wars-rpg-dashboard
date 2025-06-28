@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 
 # 🌐 Server URL
-url = "https://3903db0b-96b8-43fb-af8b-a9f198aeb950-00-1r2py597j4b13.riker.replit.dev/save_canvas"
+url = "https://star-wars-rpg-dashboard.onrender.com"
 
 # 🔐 Authorization
 headers = {"Authorization": "Bearer Abracadabra"}
