@@ -17,7 +17,7 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 # ================================
 # === Hard-coded NVIDIA Key ===
 # ================================
-NVIDIA_API_KEY = "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"
+NVIDIA_API_KEY = "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"
 
 # ================================
 # === Flask Setup ===
