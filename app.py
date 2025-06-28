@@ -170,6 +170,51 @@ def serve_static(filename):
         abort(404)
     return send_from_directory(STATIC_FOLDER, filename)
 
+# -------------------------
+# NVIDIA Nemotron Query
+# -------------------------
+import requests
+
+NVIDIA_API_KEY = os.environ.get("NVIDIA_API_KEY", "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")
+
+@app.route("/query_nemotron", methods=["POST"])
+def query_nemotron():
+    try:
+        body = request.get_json(force=True)
+        user_message = body.get("message", "")
+
+        # NVIDIA chat completion API call
+        nvidia_response = requests.post(
+            "https://integrate.api.nvidia.com/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {NVIDIA_API_KEY}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "model": "nemotron-mini-4b-instruct",
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": (
+                            "You are a fully in-universe Star Wars RPG NPC. "
+                            "Follow all canonical and gameplay rules from the AI Game Master System Bible. "
+                            "Speak only in immersive, lore-accurate Star Wars language and context. "
+                            "Respect faction politics, Force alignment systems, criminal economies, and planetary control. "
+                            "Simulate living galaxy responses consistent with the Star Wars RPG System."
+                        )
+                    },
+                    {"role": "user", "content": user_message}
+                ],
+                "temperature": 0.7,
+                "max_tokens": 1024
+            }
+        )
+
+        # Return NVIDIA's response JSON
+        return jsonify(nvidia_response.json()), 200
+
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 # -------------------------
 # RUN APP
