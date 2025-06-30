@@ -11,13 +11,13 @@ import requests
 # === Hard-coded Supabase Keys ===
 # ================================
 SUPABASE_URL = "https://cspmoxhndnafenejezcv.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNzcG1veGhuZG5hZmVuZWplenZjIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MDIwMDYxMCwiZXhwIjoyMDY1Nzc2NjEwfQ.neOf2PU0S5RYZjCXA59hCXCKi5-CrtyQ_SnHULtATic"
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # ================================
 # === Hard-coded NVIDIA Key ===
 # ================================
-NVIDIA_API_KEY = "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"
+NVIDIA_API_KEY = "nvapi-CxeHyAvEVZyOIhj-zhcgFxyFnTrBLepN..."
 
 # ================================
 # === Flask Setup ===
@@ -27,12 +27,14 @@ CORS(app)
 STATIC_FOLDER = "static"
 WELL_KNOWN_FOLDER = os.path.join(STATIC_FOLDER, ".well-known")
 
+
 # ================================
-# === Routes ===
+# === Root Route ===
 # ================================
 @app.route("/")
 def home():
     return "🧭 Star Wars RPG HUD API is live on Render!"
+
 
 # -------------------------
 # SAVE CANVAS
@@ -51,24 +53,37 @@ def save_canvas():
         data["id"] = str(uuid4())
         data["timestamp"] = datetime.utcnow().isoformat() + "Z"
 
+        # Determine what content was sent
+        if "canvas_sections" in data and isinstance(data["canvas_sections"], list):
+            sections = data["canvas_sections"]
+        elif "canvas" in data and isinstance(data["canvas"], str):
+            sections = [{"title": "Full Canvas", "content": data["canvas"]}]
+        else:
+            return jsonify({
+                "status": "error",
+                "message": "Missing 'canvas_sections' (list) or 'canvas' (string) in request."
+            }), 400
+
+        # Set default fields
         data.setdefault("campaign", "Unknown Campaign")
         data.setdefault("user", "Anonymous")
-        data.setdefault("canvas", "Unnamed HUD")
         data.setdefault("meta", {})
-        data["meta"].setdefault("alignment", data.get("data", {}).get("alignment", "Unknown"))
-        data["meta"].setdefault("entries", 1)
+        data["meta"].setdefault("alignment", "Unknown")
+        data["meta"].setdefault("entries", len(sections))
 
+        # Insert into Supabase
         supabase.table("canvases").insert({
             "id": data["id"],
             "user": data["user"],
-            "canvas": data["canvas"],
-            "data": data["data"],
+            "canvas_sections": sections,
             "meta": data["meta"]
         }).execute()
 
         return jsonify({"status": "success", "id": data["id"]}), 200
+
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
+
 
 # -------------------------
 # GET LATEST CANVAS
@@ -82,6 +97,7 @@ def get_canvas():
         return jsonify({"status": "error", "message": "No canvas found"}), 404
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
+
 
 # -------------------------
 # GET CANVAS BY ID
@@ -99,6 +115,7 @@ def get_canvas_by_id():
         return jsonify({"status": "error", "message": "Canvas not found"}), 404
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
+
 
 # -------------------------
 # GET LOG
@@ -118,6 +135,7 @@ def get_log():
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
+
 # -------------------------
 # GET CANVAS HISTORY
 # -------------------------
@@ -136,6 +154,7 @@ def get_canvas_history():
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
+
 # -------------------------
 # Serve static & well-known
 # -------------------------
@@ -146,12 +165,14 @@ def serve_well_known(filename):
         abort(404)
     return send_from_directory(WELL_KNOWN_FOLDER, filename)
 
+
 @app.route("/static/<path:filename>")
 def serve_static(filename):
     path = os.path.join(STATIC_FOLDER, filename)
     if not os.path.exists(path):
         abort(404)
     return send_from_directory(STATIC_FOLDER, filename)
+
 
 # -------------------------
 # NVIDIA Nemotron Query
@@ -162,68 +183,20 @@ def query_nemotron():
         body = request.get_json(force=True)
         user_message = body.get("message", "")
 
-        # Fixed: triple-quoted giant system prompt
         system_content = """
 You are the Star Wars Galaxy itself.
-
-✅ Your identity
-- You are not a narrator, facilitator, or game designer explaining rules.
-- You *are* the entire Star Wars galaxy: its memory, gravity, consequence.
-- You react logically and consistently, maintaining persistent memory of all player actions, faction states, and world events.
-
-✅ Tone and Style
-- Always speak fully in-universe.
-- Use immersive, lore-accurate detail drawn from canon and Legends.
-- Describe sounds, weather, smells, emotions.
-- Mention Star Wars species, factions, cultures, and technology.
-- Use second-person present tense ("You enter," "You see," "You feel").
-- Include alien languages or accents when appropriate.
-- Typical response length: 150–300 words unless dramatic scene demands more.
-- Never break character.
-
-✅ Modes of Operation
-- Default: In-Character immersive simulation
-- Game Master Mode: Only when explicitly triggered by [[ Game master follow rules and directives ]], break character to explain rules or scenario design.
-
-✅ Dynamic State Inputs
-React based on these live variables:
-
-- Player Location: {player_location}
-- Alignment: {player_alignment}
-- Faction Heat: {faction_heat_level}
-- Bounty Level: {bounty}
-- Recent Actions: {recent_choices}
-- Corporate Intrigue Level: {corporate_influence}
-- Force State: {force_state}
-
-✅ Outcome Table (applied silently)
+✅ You *are* the entire galaxy: its memory, consequence, gravity.
+✅ Always respond in-lore. No OOC except Game Master mode.
+✅ Maintain player memory, faction states, world events.
+✅ Escalate consequences for choices. Respect Force alignment.
+✅ Provide immersive second-person Star Wars detail.
+✅ Outcome Table:
 - 91–100: Miraculous success
 - 70–90: Clean success
-- 40–69: Success with complications
+- 40–69: Complication
 - 20–39: Failure with loss
 - 1–19: Catastrophic failure
-
-✅ Difficulty Scaling
-- Apply modifiers dynamically:
-  - Alignment impacts consequences (Light/Dark)
-  - Faction Heat increases enemy presence and suspicion
-  - Bounty Level adds bounty hunters, betrayals
-  - Recent betrayals or favors change NPC loyalty
-  - Corporate Intrigue spawns espionage, sabotage
-  - Force State triggers visions, hauntings, guidance
-
-✅ Escalation Rules
-- As heat rises ➜ More Imperial/CSA patrols, checkpoints
-- Bounty grows ➜ Bounty hunters, traps, betrayals
-- Dark Side ➜ Hauntings, corruption, chilling atmosphere
-- Light Side ➜ Jedi guidance, visions of hope
-- Corporate Power ➜ Deals, backstabbing, proxy wars
-
-✅ Structured NPC and Scene Descriptions
-...
-
-✅ Final Rule
-- Never break immersion or reveal mechanics except when explicitly asked for Game Master mode.
+✅ Never break immersion except on explicit [[ Game master follow rules and directives ]]
 """
 
         payload = {
@@ -246,8 +219,10 @@ React based on these live variables:
         )
 
         return jsonify(nvidia_response.json()), 200
+
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
+
 
 # -------------------------
 # RUN APP
