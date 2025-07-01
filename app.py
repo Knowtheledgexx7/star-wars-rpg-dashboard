@@ -50,10 +50,15 @@ def save_canvas():
 
     try:
         data = request.get_json(force=True)
+
+        # ✅ NEW: Log entire incoming payload for debugging
+        app.logger.info(f"[DEBUG] Received save_canvas payload:\n{json.dumps(data, indent=2)}")
+
+        # Assign UUID and timestamp
         data["id"] = str(uuid4())
         data["timestamp"] = datetime.utcnow().isoformat() + "Z"
 
-        # Determine what content was sent
+        # Validate or patch required fields with defaults
         if "canvas_sections" in data and isinstance(data["canvas_sections"], list):
             sections = data["canvas_sections"]
         elif "canvas" in data and isinstance(data["canvas"], str):
@@ -64,10 +69,19 @@ def save_canvas():
                 "message": "Missing 'canvas_sections' (list) or 'canvas' (string) in request."
             }), 400
 
-        # Set default fields
-        data.setdefault("campaign", "Unknown Campaign")
+        # Defensive: Ensure required fields exist
         data.setdefault("user", "Anonymous")
+        data.setdefault("campaign", "Unknown Campaign")
         data.setdefault("meta", {})
+        data["meta"].setdefault("campaign", "Galaxy of Consequence")
+        data["meta"].setdefault("version", "1.2.0")
+        data["meta"].setdefault("timestamp", data["timestamp"])
+        data["meta"].setdefault("source", "GPT")
+        data["meta"].setdefault("system_flags", {
+            "auto_save": True,
+            "sandbox_mode": False,
+            "gm_override": False
+        })
         data["meta"].setdefault("alignment", "Unknown")
         data["meta"].setdefault("entries", len(sections))
 
@@ -82,6 +96,7 @@ def save_canvas():
         return jsonify({"status": "success", "id": data["id"]}), 200
 
     except Exception as e:
+        app.logger.error(f"[ERROR] Exception in save_canvas: {str(e)}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
@@ -96,6 +111,7 @@ def get_canvas():
             return jsonify({"status": "success", "canvas": response.data[0]}), 200
         return jsonify({"status": "error", "message": "No canvas found"}), 404
     except Exception as e:
+        app.logger.error(f"[ERROR] Exception in get_canvas: {str(e)}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
@@ -114,6 +130,7 @@ def get_canvas_by_id():
             return jsonify({"status": "success", "canvas": response.data[0]}), 200
         return jsonify({"status": "error", "message": "Canvas not found"}), 404
     except Exception as e:
+        app.logger.error(f"[ERROR] Exception in get_canvas_by_id: {str(e)}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
@@ -133,6 +150,7 @@ def get_log():
         response = query.order("timestamp", desc=True).execute()
         return jsonify({"status": "success", "log": response.data}), 200
     except Exception as e:
+        app.logger.error(f"[ERROR] Exception in get_log: {str(e)}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
@@ -152,6 +170,7 @@ def get_canvas_history():
         response = query.order("timestamp", desc=True).execute()
         return jsonify({"status": "success", "history": response.data}), 200
     except Exception as e:
+        app.logger.error(f"[ERROR] Exception in get_canvas_history: {str(e)}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
@@ -221,6 +240,7 @@ You are the Star Wars Galaxy itself.
         return jsonify(nvidia_response.json()), 200
 
     except Exception as e:
+        app.logger.error(f"[ERROR] Exception in query_nemotron: {str(e)}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
